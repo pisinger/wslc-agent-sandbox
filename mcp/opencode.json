@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "microsoft-learn": {
+      "type": "remote",
+      "url": "https://learn.microsoft.com/api/mcp",
+      "enabled": true
+    },
+    "ms-release-radar": {
+      "type": "remote",
+      "url": "https://pisinger.tngx-voice.com/api/mcp",
+      "enabled": true
+    }
+  }
+}

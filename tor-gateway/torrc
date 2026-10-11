@@ -1,0 +1,7 @@
+ClientOnly 1
+SocksPort 127.0.0.1:9050
+SafeSocks 1
+TestSocks 1
+DataDirectory /var/lib/tor
+AvoidDiskWrites 1
+Log notice stdout

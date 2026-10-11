@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Egress monitor</title>
+<script>
+  try { document.documentElement.dataset.theme = localStorage.getItem("egress-monitor-theme") || "dark"; } catch (e) {}
+</script>
+<style>
+:root {
+  --bg: #eef0f3; --pane: #ffffff; --ink: #1d2330; --muted: #5d6677; --line: #cfd4dc;
+  --allowed: #dff2dc; --denied: #f7d7d7; --error: #f8ecc8; --sel: #2f63c9; --sel-ink: #ffffff;
+  --ok: #cdeccb; --bad: #f5c6c6; --model: #5a3fb0;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #15181e; --pane: #1c2028; --ink: #dfe3ea; --muted: #8d96a5; --line: #2c323d;
+  --allowed: #1d3325; --denied: #47232a; --error: #3e351c; --sel: #3a66cc; --sel-ink: #ffffff;
+  --ok: #1f4229; --bad: #4f2328; --model: #b9a4ff;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] {
+    --bg: #15181e; --pane: #1c2028; --ink: #dfe3ea; --muted: #8d96a5; --line: #2c323d;
+    --allowed: #1d3325; --denied: #47232a; --error: #3e351c; --sel: #3a66cc; --sel-ink: #ffffff;
+    --ok: #1f4229; --bad: #4f2328; --model: #b9a4ff;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 13px/1.4 var(--sans); display: grid;
+  grid-template-rows: auto 1fr auto; padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0); }
+header { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+header h1 { font-size: 14px; font-weight: 600; margin: 0 8px 0 0; white-space: nowrap; }
+#filter { flex: 1 1 360px; min-width: 200px; font: 13px var(--mono); padding: 5px 8px; border: 1px solid var(--line);
+  border-radius: 3px; background: var(--pane); color: var(--ink); }
+#filter.valid { background: var(--ok); } #filter.invalid { background: var(--bad); }
+button, label.toggle { font: inherit; padding: 4px 10px; border: 1px solid var(--line); border-radius: 3px;
+  background: var(--pane); color: var(--ink); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+button:focus-visible, #filter:focus-visible, tr:focus-visible { outline: 2px solid var(--sel); outline-offset: 1px; }
+main { display: grid; grid-template-columns: 1fr 300px; grid-template-rows: 1fr 190px; min-height: 0; }
+.pane { background: var(--pane); border: 1px solid var(--line); margin: 4px; overflow: auto; min-height: 0; }
+#list { grid-column: 1; grid-row: 1; }
+#detail { grid-column: 1; grid-row: 2; padding: 6px 10px; font: 12px var(--mono); }
+#side { grid-column: 2; grid-row: 1 / span 2; padding: 8px 10px; }
+table { border-collapse: collapse; width: 100%; font: 12px var(--mono); }
+thead th { position: sticky; top: 0; background: var(--pane); text-align: left; font: 600 12px var(--sans);
+  padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 2px 8px; white-space: nowrap; }
+td { font-variant-numeric: tabular-nums; }
+th.num, td.num { text-align: right; }
+#side th { text-align: left; font: 600 12px var(--sans); color: var(--muted); padding: 2px 4px;
+  border-bottom: 1px solid var(--line); white-space: nowrap; }
+tr.allowed td { background: var(--allowed); } tr.denied td { background: var(--denied); } tr.error td { background: var(--error); }
+tr.reused td { animation: tunnel-activity 1.4s ease-out; }
+tr.reused td:first-child::before { content: "● "; color: #45b95f; }
+@keyframes tunnel-activity { from { background: var(--ok); } to { background: transparent; } }
+tr.sel td { background: var(--sel); color: var(--sel-ink); }
+td.model { color: var(--model); font-weight: 600; }
+tr.sel td.model { color: var(--sel-ink); }
+::selection { background: var(--sel); color: var(--sel-ink); }
+tbody tr { cursor: default; }
+#detail dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; margin: 0; }
+#detail dt { color: var(--muted); } #detail dd { margin: 0; word-break: break-all; }
+#side h2 { font-size: 13px; font-weight: 600; margin: 4px 0 6px; }
+#side section + section { margin-top: 16px; }
+#side table td { padding: 2px 4px; }
+.empty { color: var(--muted); font-style: italic; }
+footer { display: flex; gap: 18px; padding: 4px 10px; border-top: 1px solid var(--line); color: var(--muted);
+  font-variant-numeric: tabular-nums; flex-wrap: wrap; }
+#conn.live::before { content: "●"; color: #2e9b47; margin-right: 4px; }
+#conn.down::before { content: "●"; color: #c93a3a; margin-right: 4px; }
+@media (max-width: 860px) {
+  main { grid-template-columns: 1fr; grid-template-rows: 1fr 160px auto; }
+  #side { grid-column: 1; grid-row: 3; max-height: 220px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Egress monitor</h1>
+  <input id="filter" spellcheck="false" autocomplete="off"
+         placeholder="Display filter, e.g. model contains qwen || verdict == denied"
+         aria-label="Display filter">
+  <label class="toggle"><input type="checkbox" id="follow" checked> Follow</label>
+  <button id="clear" type="button">Clear view</button>
+  <button id="export" type="button">Export CSV</button>
+  <button id="theme" type="button" aria-label="Switch theme">Theme: Dark</button>
+</header>
+
+<main>
+  <div class="pane" id="list">
+    <table>
+      <thead><tr>
+        <th class="num">No.</th><th>Time</th><th class="num">Duration</th><th>Source</th><th>Method</th>
+        <th>Destination</th><th>Resolved IP</th><th>Port</th><th>Model</th><th class="num">Tok in</th><th class="num">Tok out</th>
+        <th>Result</th><th>Status</th><th class="num">Sent</th><th class="num">Received</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div class="pane" id="detail"><p class="empty">Select a row to see its details.</p></div>
+  <aside class="pane" id="side">
+    <section>
+      <h2>Open tunnels</h2>
+      <div id="active"><p class="empty">Waiting for the proxy…</p></div>
+    </section>
+    <section>
+      <h2>Models</h2>
+      <div id="models"><p class="empty">No model requests yet.</p></div>
+    </section>
+    <section>
+      <h2>Destinations</h2>
+      <div id="dests"><p class="empty">No traffic yet.</p></div>
+    </section>
+  </aside>
+</main>
+
+<footer>
+  <span id="conn" class="down">Disconnected</span>
+  <span id="tor"></span>
+  <span id="s-total">0 requests</span>
+  <span id="s-allowed">0 allowed</span>
+  <span id="s-denied">0 denied</span>
+  <span id="s-shown">0 shown</span>
+  <span id="s-bytes">0 B sent / 0 B received</span>
+  <span id="s-tokens">0 tokens in / 0 out</span>
+</footer>
+
+<script>
+(() => {
+  const MAX_ROWS = 10000, MAX_RENDER = 5000;
+  const rows = [];
+  const byNo = new Map();
+  let selectedNo = null;
+  let predicate = () => true;
+  const stats = { total: 0, allowed: 0, denied: 0, up: 0, down: 0, tin: 0, tout: 0 };
+  let activeBytes = { up: 0, down: 0 };
+  const dests = new Map();
+  const models = new Map();
+  let previousActive = new Map();
+
+  const $ = (id) => document.getElementById(id);
+  const tbody = $("rows"), list = $("list"), filterEl = $("filter");
+
+  const fmtTime = (ts) => {
+    const d = new Date(ts * 1000);
+    return d.toLocaleTimeString([], { hour12: false }) + "." + String(d.getMilliseconds()).padStart(3, "0");
+  };
+  const fmtBytes = (n) => {
+    if (n < 1024) return n + " B";
+    const u = ["KB", "MB", "GB"]; let i = -1;
+    do { n /= 1024; i++; } while (n >= 1024 && i < u.length - 1);
+    return n.toFixed(1) + " " + u[i];
+  };
+  const fmtTok = (n) => n == null ? "" : n >= 10000 ? (n / 1000).toFixed(1) + "k" : String(n);
+  const fmtDur = (ms) => ms < 1000 ? ms + " ms" : (ms / 1000).toFixed(1) + " s";
+
+  // Display filter: clauses joined by && and ||, && binds tighter.
+  // Clause: <field> <op> <value>, op in == != contains matches > < >= <=; a bare word matches any field.
+  const FIELDS = { host: "host", port: "port", client: "client", src: "client", method: "method",
+    code: "code", status: "status", verdict: "verdict", url: "url", server: "server",
+    sent: "up", received: "down", dur: "dur", no: "no", model: "model",
+    tokens_in: "tokens_in", tokens_out: "tokens_out", tin: "tokens_in", tout: "tokens_out" };
+  const NUMERIC = new Set(["up", "down", "dur", "no", "status", "port", "tokens_in", "tokens_out"]);
+  function compileClause(text) {
+    const m = text.match(/^(\w+)\s*(==|!=|>=|<=|>|<|contains|matches)\s*(.+)$/i);
+    if (!m) {
+      if (/\s/.test(text)) throw new Error("bad clause");
+      const needle = text.toLowerCase();
+      return (r) => [r.host, r.url, r.client, r.code, r.method, r.status, r.verdict, r.model].join(" ").toLowerCase().includes(needle);
+    }
+    const key = FIELDS[m[1].toLowerCase()];
+    if (!key) throw new Error("unknown field " + m[1]);
+    const op = m[2].toLowerCase();
+    const raw = m[3].trim().replace(/^"(.*)"$/, "$1");
+    if (op === "matches") { const re = new RegExp(raw, "i"); return (r) => re.test(String(r[key])); }
+    if (op === "contains") { const v = raw.toLowerCase(); return (r) => String(r[key]).toLowerCase().includes(v); }
+    if ([">", "<", ">=", "<="].includes(op)) {
+      if (!NUMERIC.has(key) || isNaN(Number(raw))) throw new Error("numeric compare");
+      const v = Number(raw);
+      return { ">": (r) => Number(r[key]) > v, "<": (r) => Number(r[key]) < v,
+               ">=": (r) => Number(r[key]) >= v, "<=": (r) => Number(r[key]) <= v }[op];
+    }
+    const v = raw.toLowerCase();
+    return op === "==" ? (r) => String(r[key]).toLowerCase() === v : (r) => String(r[key]).toLowerCase() !== v;
+  }
+  function compile(text) {
+    const t = text.trim();
+    if (!t) return () => true;
+    const ors = t.split("||").map((o) => o.split("&&").map((c) => compileClause(c.trim())));
+    return (r) => ors.some((ands) => ands.every((f) => f(r)));
+  }
+
+  function cell(tr, text, cls) {
+    const td = document.createElement("td");
+    td.textContent = text;
+    if (cls) td.className = cls;
+    tr.appendChild(td);
+  }
+  function renderRow(r) {
+    const tr = document.createElement("tr");
+    tr.className = r.verdict + (r.no === selectedNo ? " sel" : "");
+    tr.dataset.no = r.no;
+    tr.tabIndex = -1;
+    cell(tr, r.no, "num"); cell(tr, fmtTime(r.ts)); cell(tr, fmtDur(r.dur), "num");
+    cell(tr, r.client); cell(tr, r.method); cell(tr, r.host);
+    cell(tr, r.server && r.server !== "-" ? r.server : ""); cell(tr, r.port);
+    cell(tr, r.model || "", "model");
+    cell(tr, fmtTok(r.tokens_in), "num"); cell(tr, fmtTok(r.tokens_out), "num");
+    cell(tr, r.code); cell(tr, r.status); cell(tr, fmtBytes(r.up), "num"); cell(tr, fmtBytes(r.down), "num");
+    return tr;
+  }
+  function rerender() {
+    const shown = rows.filter(predicate).slice(-MAX_RENDER);
+    const frag = document.createDocumentFragment();
+    shown.forEach((r) => frag.appendChild(renderRow(r)));
+    tbody.replaceChildren(frag);
+    $("s-shown").textContent = shown.length + " shown";
+    if ($("follow").checked) list.scrollTop = list.scrollHeight;
+  }
+
+  function showDetail(r) {
+    const d = $("detail");
+    if (!r) { d.replaceChildren(Object.assign(document.createElement("p"), { className: "empty", textContent: "Select a row to see its details." })); return; }
+    const dl = document.createElement("dl");
+    const add = (k, v) => { const dt = document.createElement("dt"), dd = document.createElement("dd");
+      dt.textContent = k; dd.textContent = v; dl.append(dt, dd); };
+    add("Request", "#" + r.no + "  " + new Date(r.ts * 1000).toISOString());
+    add("Verdict", r.verdict + "  (" + r.code + " / HTTP " + r.status + ")");
+    add("Source", r.client);
+    add("Destination", r.host + (r.port ? ":" + r.port : "") + (r.server && r.server !== "-" ? "  resolved " + r.server : ""));
+    add("Method", r.method);
+    if (r.model) add("Model", r.model);
+    if (r.tokens_in != null || r.tokens_out != null)
+      add("Tokens", (r.tokens_in ?? "?") + " in, " + (r.tokens_out ?? "?") + " out");
+    else if (r.model && r.verdict === "allowed")
+      add("Tokens", "not reported (streaming without include_usage; see -ForceStreamUsage)");
+    add("URL", r.url);
+    add("Duration", fmtDur(r.dur) + (r.method === "CONNECT" ? "  (tunnel lifetime; logged when closed)" : ""));
+    add("Bytes", fmtBytes(r.up) + " sent by agent, " + fmtBytes(r.down) + " received by agent");
+    d.replaceChildren(dl);
+  }
+
+  tbody.addEventListener("click", (e) => {
+    const tr = e.target.closest("tr"); if (!tr) return;
+    selectedNo = Number(tr.dataset.no);
+    tbody.querySelectorAll("tr.sel").forEach((x) => x.classList.remove("sel"));
+    tr.classList.add("sel");
+    showDetail(byNo.get(selectedNo));
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.target === filterEl || !["ArrowDown", "ArrowUp"].includes(e.key)) return;
+    const cur = tbody.querySelector("tr.sel");
+    const next = cur ? (e.key === "ArrowDown" ? cur.nextElementSibling : cur.previousElementSibling) : tbody.firstElementChild;
+    if (next) { e.preventDefault(); next.click(); next.scrollIntoView({ block: "nearest" }); }
+  });
+
+  let filterTimer;
+  filterEl.addEventListener("input", () => {
+    clearTimeout(filterTimer);
+    filterTimer = setTimeout(() => {
+      try {
+        predicate = compile(filterEl.value);
+        filterEl.className = filterEl.value.trim() ? "valid" : "";
+        rerender();
+      } catch { filterEl.className = "invalid"; }
+    }, 150);
+  });
+  $("clear").addEventListener("click", () => {
+    rows.length = 0; byNo.clear(); dests.clear(); models.clear(); selectedNo = null;
+    Object.keys(stats).forEach((k) => stats[k] = 0);
+    rerender(); showDetail(null); renderStats(); renderDests(); renderModels();
+  });
+
+  const THEMES = ["dark", "light", "auto"];
+  const themeBtn = $("theme");
+  const setTheme = (t) => {
+    document.documentElement.dataset.theme = t;
+    themeBtn.textContent = "Theme: " + t[0].toUpperCase() + t.slice(1);
+    try { localStorage.setItem("egress-monitor-theme", t); } catch (e) {}
+  };
+  setTheme(document.documentElement.dataset.theme || "dark");
+  themeBtn.addEventListener("click", () => {
+    const cur = document.documentElement.dataset.theme;
+    setTheme(THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length]);
+  });
+  $("export").addEventListener("click", () => {
+    const cols = ["no", "ts", "dur", "client", "method", "host", "port", "model", "tokens_in", "tokens_out", "code", "status", "up", "down", "server", "url", "verdict"];
+    const esc = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+    const csv = [cols.join(",")].concat(rows.filter(predicate).map((r) => cols.map((c) => esc(r[c])).join(","))).join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "egress-" + (document.title.replace(/\W+/g, "-")) + ".csv";
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  function renderStats() {
+    $("s-total").textContent = stats.total + " requests";
+    $("s-allowed").textContent = stats.allowed + " allowed";
+    $("s-denied").textContent = stats.denied + " denied";
+    $("s-bytes").textContent = fmtBytes(stats.up + activeBytes.up) + " sent / " +
+      fmtBytes(stats.down + activeBytes.down) + " received" +
+      (activeBytes.up || activeBytes.down ? " (including open tunnels)" : "");
+    $("s-tokens").textContent = stats.tin.toLocaleString() + " tokens in / " + stats.tout.toLocaleString() + " out";
+  }
+  function renderDests() {
+    const el = $("dests");
+    if (!dests.size) { el.replaceChildren(Object.assign(document.createElement("p"), { className: "empty", textContent: "No traffic yet." })); return; }
+    const t = document.createElement("table");
+    const head = document.createElement("tr");
+    ["Host", "Req", "Denied", "Bytes"].forEach((h, i) => { const th = document.createElement("th"); th.textContent = h; if (i) th.className = "num"; head.appendChild(th); });
+    t.appendChild(head);
+    [...dests.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 25).forEach(([host, s]) => {
+      const tr = document.createElement("tr");
+      if (s.denied) tr.className = "denied";
+      cell(tr, host); cell(tr, s.n, "num"); cell(tr, s.denied, "num"); cell(tr, fmtBytes(s.bytes), "num");
+      tr.addEventListener("click", () => { filterEl.value = "host == " + host; filterEl.dispatchEvent(new Event("input")); });
+      t.appendChild(tr);
+    });
+    el.replaceChildren(t);
+  }
+
+  function renderModels() {
+    const el = $("models");
+    if (!models.size) { el.replaceChildren(Object.assign(document.createElement("p"), { className: "empty", textContent: "No model requests yet." })); return; }
+    const t = document.createElement("table");
+    const head = document.createElement("tr");
+    ["Model", "Req", "Denied", "Tok in", "Tok out"].forEach((h, i) => { const th = document.createElement("th"); th.textContent = h; if (i) th.className = "num"; head.appendChild(th); });
+    t.appendChild(head);
+    [...models.entries()].sort((a, b) => b[1].n - a[1].n).forEach(([m, st]) => {
+      const tr = document.createElement("tr");
+      if (st.denied) tr.className = "denied";
+      cell(tr, m, "model"); cell(tr, st.n, "num"); cell(tr, st.denied, "num");
+      cell(tr, fmtTok(st.tin), "num"); cell(tr, fmtTok(st.tout), "num");
+      tr.addEventListener("click", () => { filterEl.value = "model == " + m; filterEl.dispatchEvent(new Event("input")); });
+      t.appendChild(tr);
+    });
+    el.replaceChildren(t);
+  }
+
+  let pending = [], flushScheduled = false;
+  function ingest(r) {
+    rows.push(r); byNo.set(r.no, r);
+    if (rows.length > MAX_ROWS) byNo.delete(rows.shift().no);
+    stats.total++; stats.up += r.up; stats.down += r.down;
+    stats.tin += r.tokens_in || 0; stats.tout += r.tokens_out || 0;
+    if (r.verdict === "allowed") stats.allowed++; else if (r.verdict === "denied") stats.denied++;
+    const d = dests.get(r.host) || { n: 0, denied: 0, bytes: 0 };
+    d.n++; d.bytes += r.up + r.down; if (r.verdict === "denied") d.denied++;
+    dests.set(r.host, d);
+    if (r.model) {
+      const m = models.get(r.model) || { n: 0, denied: 0, tin: 0, tout: 0 };
+      m.n++; m.tin += r.tokens_in || 0; m.tout += r.tokens_out || 0; if (r.verdict === "denied") m.denied++;
+      models.set(r.model, m);
+    }
+    if (predicate(r)) pending.push(r);
+    if (!flushScheduled) { flushScheduled = true; requestAnimationFrame(flush); }
+  }
+  function flush() {
+    flushScheduled = false;
+    const frag = document.createDocumentFragment();
+    pending.forEach((r) => frag.appendChild(renderRow(r)));
+    pending = [];
+    tbody.appendChild(frag);
+    while (tbody.childElementCount > MAX_RENDER) tbody.firstElementChild.remove();
+    $("s-shown").textContent = tbody.childElementCount + " shown";
+    if ($("follow").checked) list.scrollTop = list.scrollHeight;
+    renderStats(); renderDests(); renderModels();
+  }
+
+  function connect() {
+    const es = new EventSource("/events");
+    es.onopen = () => { $("conn").className = "live"; $("conn").textContent = "Live"; };
+    es.onmessage = (e) => { try { ingest(JSON.parse(e.data)); } catch {} };
+    es.onerror = () => { $("conn").className = "down"; $("conn").textContent = "Reconnecting"; };
+  }
+
+  async function pollActive() {
+    const el = $("active");
+    try {
+      const res = await (await fetch("/api/active", { cache: "no-store" })).json();
+      if (!res.available) {
+        activeBytes = { up: 0, down: 0 }; previousActive.clear(); renderStats();
+        el.replaceChildren(Object.assign(document.createElement("p"), { className: "empty", textContent: "Unavailable: " + res.reason }));
+      } else if (!res.connections.length) {
+        activeBytes = { up: 0, down: 0 }; previousActive.clear(); renderStats();
+        el.replaceChildren(Object.assign(document.createElement("p"), { className: "empty", textContent: "No open tunnels." }));
+      } else {
+        activeBytes = res.connections.reduce((s, c) => ({ up: s.up + (c.read || 0), down: s.down + (c.wrote || 0) }), { up: 0, down: 0 });
+        const t = document.createElement("table");
+        const head = document.createElement("tr");
+        ["Destination", "Age", "Sent", "Received", "Activity"].forEach((h, i) => {
+          const th = document.createElement("th"); th.textContent = h; if (i) th.className = "num"; head.appendChild(th);
+        });
+        t.appendChild(head);
+        const currentActive = new Map();
+        res.connections.sort((a, b) => (b.age || 0) - (a.age || 0)).forEach((c) => {
+          const key = (c.client || "") + "|" + c.uri;
+          const previous = previousActive.get(key);
+          const deltaUp = previous ? Math.max(0, (c.read || 0) - previous.read) : 0;
+          const deltaDown = previous ? Math.max(0, (c.wrote || 0) - previous.wrote) : 0;
+          const reused = deltaUp > 0 || deltaDown > 0;
+          currentActive.set(key, { read: c.read || 0, wrote: c.wrote || 0 });
+          const tr = document.createElement("tr");
+          if (reused) tr.className = "reused";
+          cell(tr, c.uri); cell(tr, c.age != null ? fmtDur(Math.round(c.age * 1000)) : "?", "num");
+          cell(tr, fmtBytes(c.read || 0), "num"); cell(tr, fmtBytes(c.wrote || 0), "num");
+          cell(tr, reused ? "+" + fmtBytes(deltaUp) + " / +" + fmtBytes(deltaDown) : "open", "num");
+          tr.title = (c.client || "") + "  " + (c.type || "");
+          t.appendChild(tr);
+        });
+        previousActive = currentActive;
+        el.replaceChildren(t);
+        renderStats();
+      }
+    } catch { /* keep last view */ }
+    setTimeout(pollActive, 2000);
+  }
+
+  fetch("/api/info").then((r) => r.json()).then((i) => {
+    if (i.session) { document.title = "Egress monitor: " + i.session; $("title").textContent = "Egress monitor: " + i.session; }
+    if (i.tor) $("tor").textContent = "Tor: " + (i.torExitIp || "verified");
+  }).catch(() => {});
+  connect();
+  pollActive();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "microsoft-learn": {
+      "type": "http",
+      "url": "https://learn.microsoft.com/api/mcp",
+      "tools": ["*"]
+    },
+    "ms-release-radar": {
+      "type": "http",
+      "url": "https://pisinger.tngx-voice.com/api/mcp",
+      "tools": ["*"]
+    }
+  }
+}
