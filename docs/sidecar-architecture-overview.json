@@ -1,0 +1,73 @@
+{
+  "layout": "split-lanes",
+  "size": "square",
+  "theme": "midnight",
+  "eyebrow": "WSLC  ·  SIDECAR SECURITY  ·  CONTROLLED EGRESS",
+  "title": "Two Paths, One Controlled Boundary",
+  "subtitle": "Model credentials stay isolated while agent tool traffic remains allowlisted, observable, and optionally routed through Tor.",
+  "source": {
+    "badge": "UNTRUSTED WORKLOAD",
+    "title": "Agent Container",
+    "subtitle": "OpenCode or GitHub Copilot CLI · internal network only",
+    "pills": [
+      {"text": "No direct route", "tone": "ok"},
+      {"text": "No extra capabilities", "tone": "info"}
+    ]
+  },
+  "lanes": [
+    {
+      "label": "MODEL API PATH",
+      "tone": "ok",
+      "edge_label": "placeholder credential",
+      "steps": [
+        {
+          "title": "API Proxy Sidecar",
+          "subtitle": "inject key · restrict paths and models"
+        },
+        {
+          "title": "Direct TLS Egress",
+          "subtitle": "Ollama Cloud · never routed through Tor"
+        }
+      ],
+      "note": {
+        "text": "The real model API key never enters the agent container.",
+        "tone": "ok"
+      }
+    },
+    {
+      "label": "TOOL & MCP PATH",
+      "tone": "info",
+      "edge_label": "HTTP(S) proxy only",
+      "steps": [
+        {
+          "title": "Squid Sidecar",
+          "subtitle": "domain + port allowlist · deny by default"
+        },
+        {
+          "title": "Optional Tor Gateway",
+          "subtitle": "mandatory parent · no direct fallback"
+        },
+        {
+          "title": "Approved Tool Targets",
+          "subtitle": "MCP · Git · packages · web endpoints"
+        }
+      ],
+      "note": {
+        "text": "Local monitor combines request logs with live tunnel byte counters.",
+        "tone": "accent"
+      }
+    }
+  ],
+  "sink": {
+    "badge": "CONTROLLED OUTCOME",
+    "title": "Approved External Services",
+    "subtitle": "Separate trust paths · fail-closed startup checks · localhost-only monitoring",
+    "pills": [
+      {"text": "Model API direct", "tone": "ok"},
+      {"text": "Tools optional Tor", "tone": "info"},
+      {"text": "Audited", "tone": "accent"}
+    ]
+  },
+  "footer_left": "pisinger_wslc-agent-sandbox",
+  "footer_right": "key isolation · allowlisting · Tor · live monitoring"
+}

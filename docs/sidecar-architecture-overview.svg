@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" font-family="'Segoe UI Variable Display','Segoe UI',Inter,system-ui,sans-serif">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#060a16"/><stop offset="0.5" stop-color="#0b1428"/><stop offset="1" stop-color="#101c38"/></linearGradient>
+    <linearGradient id="srcCard" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#15213c"/><stop offset="1" stop-color="#101a30"/></linearGradient>
+    <linearGradient id="sinkCard" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0f2a2c"/><stop offset="1" stop-color="#12233a"/></linearGradient>
+    <linearGradient id="accentBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4da3ff"/><stop offset="1" stop-color="#35d0ba"/></linearGradient>
+    <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.1" fill="#5b7096" fill-opacity="0.16"/></pattern>
+    <radialGradient id="glow0" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#3b7bff" stop-opacity="0.3"/><stop offset="1" stop-color="#3b7bff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glow1" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#20d3b4" stop-opacity="0.26"/><stop offset="1" stop-color="#20d3b4" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glow2" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffb454" stop-opacity="0.2"/><stop offset="1" stop-color="#ffb454" stop-opacity="0"/></radialGradient>
+    <marker id="a-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#35d0ba"/></marker>
+    <marker id="a-info" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4da3ff"/></marker>
+    <marker id="a-ok" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#45d483"/></marker>
+  </defs>
+  <rect width="1200" height="1200" fill="#080d1c"/>
+  <rect width="1200" height="1200" fill="url(#bgGrad)"/>
+  <rect width="1200" height="1200" fill="url(#dots)"/>
+  <circle cx="150" cy="150" r="460" fill="url(#glow0)"/>
+  <circle cx="1080" cy="1008" r="470" fill="url(#glow1)"/>
+  <circle cx="980" cy="564" r="330" fill="url(#glow2)"/>
+  <rect x="64" y="52" width="5" height="128" rx="2.5" fill="url(#accentBar)"/>
+  <text x="90" y="76" font-size="17" fill="#6f82a3" font-weight="700" letter-spacing="3.4">WSLC  ·  SIDECAR SECURITY  ·  CONTROLLED EGRESS</text>
+  <text x="90" y="132" font-size="50" fill="#f2f6ff" font-weight="700">Two Paths, One Controlled Boundary</text>
+  <text x="90" y="172" font-size="17" fill="#9fb0cb">Model credentials stay isolated while agent tool traffic remains allowlisted, observable, and optionally routed through Tor.</text>
+  <line x1="64" y1="204" x2="1136" y2="204" stroke="#25344f" stroke-width="1.5"/>
+  <rect x="64" y="228" width="1072" height="160" rx="22" fill="url(#srcCard)" stroke="#2a3a5f" stroke-width="1.7"/>
+  <text x="96" y="268" font-size="15" fill="#6f82a3" font-weight="700" letter-spacing="2.6">UNTRUSTED WORKLOAD</text>
+  <text x="96" y="312" font-size="30" fill="#f2f6ff" font-weight="700">Agent Container</text>
+  <text x="96" y="344" font-size="19" fill="#9fb0cb">OpenCode or GitHub Copilot CLI · internal network only</text>
+  <rect x="712" y="288" width="166" height="40" rx="20" fill="#122a24" stroke="#2f7a5c" stroke-width="1.6"/>
+  <text x="795" y="314" font-size="17" fill="#6fdda6" font-weight="700" text-anchor="middle">No direct route</text>
+  <rect x="890" y="288" width="214" height="40" rx="20" fill="#132340" stroke="#315f9c" stroke-width="1.6"/>
+  <text x="997" y="314" font-size="17" fill="#8fc2ff" font-weight="700" text-anchor="middle">No extra capabilities</text>
+  <path d="M324,394 L324,447" stroke="#45d483" stroke-width="3" fill="none" marker-end="url(#a-ok)"/>
+  <text x="310" y="427" font-size="16" fill="#45d483" font-weight="700" text-anchor="end">placeholder credential</text>
+  <rect x="64" y="455" width="520" height="434" rx="20" fill="#0b1226" fill-opacity="0.85" stroke="#2f7a5c" stroke-width="1.4" stroke-dasharray="7 7"/>
+  <text x="96" y="495" font-size="15" fill="#45d483" font-weight="700" letter-spacing="2.4">MODEL API PATH</text>
+  <rect x="96" y="513" width="456" height="97" rx="14" fill="#14213a" stroke="#2e4166" stroke-width="1.4"/>
+  <rect x="96" y="513" width="5" height="97" rx="2.5" fill="#45d483"/>
+  <text x="124" y="551" font-size="21" fill="#e6edfa" font-weight="700">API Proxy Sidecar</text>
+  <text x="124" y="581" font-size="17" fill="#8a99b5">inject key · restrict paths and models</text>
+  <path d="M324,612 L324,640" stroke="#45d483" stroke-width="3" fill="none" marker-end="url(#a-ok)"/>
+  <rect x="96" y="642" width="456" height="97" rx="14" fill="#14213a" stroke="#2e4166" stroke-width="1.4"/>
+  <rect x="96" y="642" width="5" height="97" rx="2.5" fill="#45d483"/>
+  <text x="124" y="680" font-size="21" fill="#e6edfa" font-weight="700">Direct TLS Egress</text>
+  <text x="124" y="710" font-size="17" fill="#8a99b5">Ollama Cloud · never routed through Tor</text>
+  <rect x="96" y="803" width="456" height="62" rx="14" fill="#122a24" stroke="#2f7a5c" stroke-width="1.4"/>
+  <circle cx="130" cy="834" r="13" fill="none" stroke="#45d483" stroke-width="2.4"/>
+  <path d="M124,828 L136,840 M136,828 L124,840" stroke="#45d483" stroke-width="2.4"/>
+  <text x="156" y="841" font-size="12" fill="#6fdda6" font-weight="700">The real model API key never enters the agent container.</text>
+  <path d="M876,394 L876,447" stroke="#4da3ff" stroke-width="3" fill="none" marker-end="url(#a-info)"/>
+  <text x="890" y="427" font-size="16" fill="#4da3ff" font-weight="700">HTTP(S) proxy only</text>
+  <rect x="616" y="455" width="520" height="434" rx="20" fill="#0b1226" fill-opacity="0.85" stroke="#315f9c" stroke-width="1.4" stroke-dasharray="7 7"/>
+  <text x="648" y="495" font-size="15" fill="#4da3ff" font-weight="700" letter-spacing="2.4">TOOL &amp; MCP PATH</text>
+  <rect x="648" y="513" width="456" height="71" rx="14" fill="#14213a" stroke="#2e4166" stroke-width="1.4"/>
+  <rect x="648" y="513" width="5" height="71" rx="2.5" fill="#4da3ff"/>
+  <text x="676" y="543" font-size="20" fill="#e6edfa" font-weight="700">Squid Sidecar</text>
+  <text x="676" y="568" font-size="15" fill="#8a99b5">domain + port allowlist · deny by default</text>
+  <path d="M876,586 L876,608" stroke="#4da3ff" stroke-width="3" fill="none" marker-end="url(#a-info)"/>
+  <rect x="648" y="610" width="456" height="71" rx="14" fill="#14213a" stroke="#2e4166" stroke-width="1.4"/>
+  <rect x="648" y="610" width="5" height="71" rx="2.5" fill="#4da3ff"/>
+  <text x="676" y="640" font-size="20" fill="#e6edfa" font-weight="700">Optional Tor Gateway</text>
+  <text x="676" y="665" font-size="15" fill="#8a99b5">mandatory parent · no direct fallback</text>
+  <path d="M876,683 L876,705" stroke="#4da3ff" stroke-width="3" fill="none" marker-end="url(#a-info)"/>
+  <rect x="648" y="707" width="456" height="71" rx="14" fill="#14213a" stroke="#2e4166" stroke-width="1.4"/>
+  <rect x="648" y="707" width="5" height="71" rx="2.5" fill="#4da3ff"/>
+  <text x="676" y="737" font-size="20" fill="#e6edfa" font-weight="700">Approved Tool Targets</text>
+  <text x="676" y="762" font-size="15" fill="#8a99b5">MCP · Git · packages · web endpoints</text>
+  <rect x="648" y="803" width="456" height="62" rx="14" fill="#0f2a2c" stroke="#2f7a6c" stroke-width="1.4"/>
+  <circle cx="682" cy="834" r="13" fill="none" stroke="#35d0ba" stroke-width="2.4"/>
+  <path d="M676,828 L688,840 M688,828 L676,840" stroke="#35d0ba" stroke-width="2.4"/>
+  <text x="708" y="841" font-size="11" fill="#6fe0cc" font-weight="700">Local monitor combines request logs with live tunnel byte counters.</text>
+  <path d="M324,893 L324,942" stroke="#45d483" stroke-width="3" fill="none" marker-end="url(#a-ok)"/>
+  <path d="M876,893 L876,942" stroke="#4da3ff" stroke-width="3" fill="none" marker-end="url(#a-info)"/>
+  <rect x="64" y="948" width="1072" height="160" rx="22" fill="url(#sinkCard)" stroke="#2f6f66" stroke-width="1.7"/>
+  <text x="96" y="988" font-size="15" fill="#6fe0cc" font-weight="700" letter-spacing="2.6">CONTROLLED OUTCOME</text>
+  <text x="96" y="1032" font-size="30" fill="#f2f6ff" font-weight="700">Approved External Services</text>
+  <text x="96" y="1064" font-size="12" fill="#9fb0cb">Separate trust paths · fail-closed startup checks · localhost-only monitoring</text>
+  <rect x="604" y="1008" width="181" height="40" rx="20" fill="#122a24" stroke="#2f7a5c" stroke-width="1.6"/>
+  <text x="695" y="1034" font-size="17" fill="#6fdda6" font-weight="700" text-anchor="middle">Model API direct</text>
+  <rect x="797" y="1008" width="194" height="40" rx="20" fill="#132340" stroke="#315f9c" stroke-width="1.6"/>
+  <text x="895" y="1034" font-size="17" fill="#8fc2ff" font-weight="700" text-anchor="middle">Tools optional Tor</text>
+  <rect x="1004" y="1008" width="100" height="40" rx="20" fill="#0f2a2c" stroke="#2f7a6c" stroke-width="1.6"/>
+  <text x="1054" y="1034" font-size="17" fill="#6fe0cc" font-weight="700" text-anchor="middle">Audited</text>
+  <line x1="64" y1="1136" x2="1136" y2="1136" stroke="#25344f" stroke-width="1.5"/>
+  <text x="64" y="1172" font-size="20" fill="#8a99b5" font-weight="700">pisinger_wslc-agent-sandbox</text>
+  <text x="1136" y="1172" font-size="17" fill="#6f82a3" text-anchor="end">key isolation · allowlisting · Tor · live monitoring  ·  AI generated</text>
+</svg>

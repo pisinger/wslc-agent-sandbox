@@ -1,5 +1,20 @@
 # Security policy
 
+[← Main README](README.md) · [Tor mode guide](TOR.md)
+
+The default design isolates the agent, allowlists general egress, and keeps the real Ollama key in
+a separate API proxy. It is a strong single-user containment pattern, not a hostile multi-tenant or
+hardware-backed security boundary.
+
+## Contents
+
+- [Report a vulnerability](#reporting-a-vulnerability)
+- [Security scope](#security-scope)
+- [Trusted components](#trusted-components)
+- [Known limitations](#known-limitations)
+- [Safe operating baseline](#safe-operating-baseline)
+- [Tor privacy and attribution guide](TOR.md)
+
 ## Reporting a vulnerability
 
 Please do not open a public issue for a suspected vulnerability that could expose credentials,
@@ -27,6 +42,7 @@ With `-Tor`, all Squid-managed traffic is forced through an unprivileged Privoxy
 dedicated internal transit network. Squid has no direct-egress interface. The API proxy remains on
 its separate direct path, so model traffic and the real Ollama key do not traverse Tor. Startup
 requires Tor to reach 100% bootstrap and the Tor Project check endpoint to confirm the route.
+The operational and attribution tradeoffs are documented in [TOR.md](TOR.md).
 
 ## Trusted components
 
