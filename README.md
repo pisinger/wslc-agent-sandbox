@@ -7,7 +7,9 @@ Isolated sessions for **opencode** or **GitHub Copilot CLI** on WSL containers, 
 - **API key injection (default for Ollama):** a separate API proxy holds the real Ollama key and adds it to model requests. The agent only ever sees a placeholder.
 - **Optional Tor mode:** general Squid traffic can be forced through an isolated Privoxy/Tor gateway while model API traffic stays direct through the API proxy.
 
-![Demo: starting a sandboxed agent session with the live egress monitor](docs/how-to-get-started.gif)
+![Preview: starting a sandboxed agent session with the live egress monitor](docs/how-to-get-started.png)
+
+[View the animated demo (GIF)](docs/how-to-get-started.gif)
 
 ```
                     oc-int-<session>  (internal: no gateway, no NAT)
@@ -91,7 +93,8 @@ wslc-agent-sandbox/
 │   ├── privoxy.config
 │   └── torrc
 ├── docs/
-│   ├── how-to-get-started.gif   demo of a session with the egress monitor
+│   ├── how-to-get-started.png   static preview of a session with the egress monitor
+│   ├── how-to-get-started.gif   animated demo (loaded on demand)
 │   ├── sidecar-architecture.svg
 │   ├── sidecar-architecture-overview.svg
 │   ├── sidecar-architecture-overview.png
