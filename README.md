@@ -7,6 +7,8 @@ Isolated sessions for **opencode** or **GitHub Copilot CLI** on WSL containers, 
 - **API key injection (default for Ollama):** a separate API proxy holds the real Ollama key and adds it to model requests. The agent only ever sees a placeholder.
 - **Optional Tor mode:** general Squid traffic can be forced through an isolated Privoxy/Tor gateway while model API traffic stays direct through the API proxy.
 
+![Demo: starting a sandboxed agent session with the live egress monitor](docs/how-to-get-started.gif)
+
 ```
                     oc-int-<session>  (internal: no gateway, no NAT)
  ┌──────────────────────────────────────────────────────────────────────────┐
@@ -49,7 +51,7 @@ Isolated sessions for **opencode** or **GitHub Copilot CLI** on WSL containers, 
 | 4 | Copilot, GitHub models, device-code sign-in | as 3, plus `-CopilotHomeVolume copilot-home` | agent, squid | **GitHub token** (stored in the volume) | no (TLS to GitHub) |
 | 5 | Ollama without injection (diagnostics) | add `-NoKeyInjection` to 1 or 2 | agent, squid | **Ollama key** | no (TLS to Ollama) |
 | 6 | Any scenario, no domain restriction | add `-AllowAllDomains` | unchanged | unchanged | unchanged; squid rows for every destination |
-| 7 | Agent as root (installs tools itself) | add `-RunAsRoot` | unchanged | unchanged | unchanged |
+| 7 | Agent as root (installs tools itself; allowlist gains `dl-cdn.alpinelinux.org`) | add `-RunAsRoot` | unchanged | unchanged | unchanged |
 | 8 | Tool traffic through Tor | add `-Tor` to scenario 1 or 2 | + Tor gateway | placeholder | yes; monitor also shows verified exit IP |
 | + | Live monitor | add `-Monitor` to any compatible scenario | + monitor | n/a | as per row |
 
@@ -89,6 +91,7 @@ wslc-agent-sandbox/
 │   ├── privoxy.config
 │   └── torrc
 ├── docs/
+│   ├── how-to-get-started.gif   demo of a session with the egress monitor
 │   ├── sidecar-architecture.svg
 │   ├── sidecar-architecture-overview.svg
 │   ├── sidecar-architecture-overview.png
@@ -135,6 +138,7 @@ wslc-agent-sandbox/
 - WSL containers with `wslc network create --internal` and `wslc network connect`; the launcher checks for `--internal` and refuses to start without it
 - Scenarios 1, 2 and 5: an Ollama Cloud API key. Check the model IDs your key exposes, because `-Models` is also the API proxy's model allowlist: `curl https://ollama.com/v1/models -H "Authorization: Bearer $env:OLLAMA_API_KEY"`
 - Scenarios 3 and 4: a GitHub account with a Copilot subscription. No Ollama key is needed
+- Optional: the `Microsoft.PowerShell.SecretManagement` and `Microsoft.PowerShell.SecretStore` modules, so the launcher can read keys from a local vault instead of prompting. SecretStore asks for its vault password once per session; `Set-SecretStoreConfiguration -Authentication None -Interaction None` removes the prompt but leaves the vault readable by anyone running as your Windows user
 
 ## Quick start
 
@@ -153,6 +157,10 @@ wslc build -t agent-egress-monitor:local monitor   # only for -Monitor
 wslc build -t agent-tor-gateway:local tor-gateway  # only for -Tor
 
 # 2. Store secrets once (optional, recommended)
+#    One-time vault setup (SecretManagement + SecretStore vault):
+Install-Module Microsoft.PowerShell.SecretManagement, Microsoft.PowerShell.SecretStore -Scope CurrentUser
+Register-SecretVault -Name LocalStore -ModuleName Microsoft.PowerShell.SecretStore -DefaultVault
+Import-Module Microsoft.PowerShell.SecretManagement   # optional; PowerShell 7 autoloads it on first Get-Secret
 Set-Secret -Name OllamaApiKey       -Secret (Read-Host "OLLAMA_API_KEY" -AsSecureString)   # scenarios 1, 2, 5
 Set-Secret -Name CopilotGithubToken -Secret (Read-Host "GitHub PAT" -AsSecureString)       # scenario 3
 

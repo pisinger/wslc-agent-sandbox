@@ -107,8 +107,8 @@ By default the agent runs as the unprivileged `agent` user and can't install any
 | Capabilities | none | only `chown`, `dac_override`, `fowner`, `fsetid` (what `apk` needs for package files) |
 | Dropped in both | `NET_RAW`, `NET_ADMIN`, `SETUID`, `SETGID`, `KILL`, `MKNOD`, `SYS_CHROOT`, ... | same |
 | `no_new_privs` | on | on: setuid binaries (e.g. from an installed `sudo`) still gain nothing |
-| `apk add` | not possible (use `-ApkPackages`) | possible; only signed packages from the image's root-owned repositories |
-| Allowlist | as configured | `dl-cdn.alpinelinux.org` added automatically |
+| `apk add` | not possible (use `-ApkPackages`) | possible; root can change repositories and keys or use `--allow-untrusted`, so squid (not signatures) limits the source to `dl-cdn.alpinelinux.org` |
+| Allowlist | as configured | `dl-cdn.alpinelinux.org` added automatically, reachable for the whole session |
 | Network isolation, squid, key injection | unchanged | unchanged |
 
 **What the agent gains as root:** it can modify everything inside its own container: binaries, configs, the entrypoint scripts and the Alpine repository list. All of that is discarded on exit (`--rm`). Files it creates in `/workspace` are owned by root.

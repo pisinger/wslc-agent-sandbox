@@ -87,7 +87,10 @@ This project is not a hostile multi-tenant boundary and does not claim hardware-
   worktree for changes, and inspect diffs before running host-side tools.
 - `-RunAsRoot` gives the agent UID 0 inside its container. Network capabilities and the external
   topology remain constrained, but the agent can rewrite its container and create root-owned
-  workspace files.
+  workspace files. As root it can also bypass apk signature checks (`--allow-untrusted`, own keys);
+  squid still limits package downloads to the allowlisted Alpine CDN.
+- `-RunAsRoot` and `-ApkPackages` add `dl-cdn.alpinelinux.org` to the allowlist for the whole
+  session, not only during package installation.
 - The shared `opencode-cache` volume carries state between OpenCode sessions.
 - The monitor receives logs over UDP, so its live view can lose rows under load. Saved proxy logs
   are the audit source.

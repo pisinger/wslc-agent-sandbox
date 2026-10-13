@@ -235,8 +235,7 @@ if ($GitHubMode) {
 # Ollama key (not needed in GitHub mode). Order: existing process env > SecretManagement vault > prompt.
 if (-not $GitHubMode -and -not $env:OLLAMA_API_KEY) {
     if (Get-Command Get-Secret -ErrorAction SilentlyContinue) {
-        #$env:OLLAMA_API_KEY = Get-Secret -Name OllamaApiKey -AsPlainText -ErrorAction SilentlyContinue
-		$env:OLLAMA_API_KEY = PasswordFromPsVault -SecretName ollamaApiKey -noClipboard
+        $env:OLLAMA_API_KEY = Get-Secret -Name OllamaApiKey -AsPlainText -ErrorAction SilentlyContinue
     }
     if (-not $env:OLLAMA_API_KEY) {
         $sec = Read-Host "OLLAMA_API_KEY" -AsSecureString
