@@ -21,6 +21,29 @@ Practical combinations of the launcher parameters. All commands run from the pro
 
 ### Build all images
 
+`Build-AgentImages.ps1` builds every image with the tags the launcher expects, stops at the first
+failed build and prints a summary table.
+
+```powershell
+.\Build-AgentImages.ps1                                     # everything
+.\Build-AgentImages.ps1 -Agent opencode                     # opencode agent image + all sidecars
+.\Build-AgentImages.ps1 -Agent copilot                      # Copilot agent image + all sidecars ("github" also works)
+.\Build-AgentImages.ps1 -Images api-proxy,proxy             # selected images only
+.\Build-AgentImages.ps1 -Exclude tor-gateway,monitor        # skip optional images
+.\Build-AgentImages.ps1 -Agent copilot -AgentVersion 1.0.4 -NoCache   # pinned CLI, clean rebuild
+```
+
+| Parameter | Effect |
+|---|---|
+| `-Agent all\|opencode\|copilot\|github` | Which agent image to build (default `all`; `github` = `copilot`). Sidecar images are unaffected |
+| `-Images` | `all` (default) or a list of `opencode`, `copilot`, `api-proxy`, `proxy`, `monitor`, `tor-gateway` |
+| `-Exclude` | Images to skip from the selection |
+| `-AgentVersion` | `--build-arg AGENT_VERSION=<version>` for the agent images, pins the CLI |
+| `-AlpineVersion` | `--build-arg ALPINE_VERSION=<version>` for all images (default in the Dockerfiles: 3.22) |
+| `-NoCache` | `--no-cache` for a clean rebuild |
+
+Equivalent manual commands:
+
 ```powershell
 wslc build -t opencode-alpine:local --build-arg AGENT=opencode agent
 wslc build -t copilot-alpine:local  --build-arg AGENT=copilot  agent
@@ -30,7 +53,7 @@ wslc build -t agent-egress-monitor:local monitor
 wslc build -t agent-tor-gateway:local    tor-gateway   # optional
 ```
 
-Add `--no-cache` for a clean rebuild, and `--build-arg AGENT_VERSION=<version>` to pin the agent CLI. `wslc image ls` shows the creation time of each tag.
+`wslc image ls` shows the creation time of each tag.
 
 ### Choose agent and model
 
@@ -209,7 +232,7 @@ agent activity and is not appropriate for every workload.
 Build the optional gateway once, then add `-Tor`:
 
 ```powershell
-wslc build -t agent-tor-gateway:local tor-gateway
+.\Build-AgentImages.ps1 -Images tor-gateway
 .\Start-AgentSidecar.ps1 -Tor -Monitor
 ```
 

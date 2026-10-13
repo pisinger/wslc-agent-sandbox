@@ -113,6 +113,20 @@ function Test-TcpPortAvailable([string]$BindAddress, [int]$Port) {
     catch { return $false }
     finally { if ($listener) { $listener.Stop() } }
 }
+# Health probe that never uses the Windows/WinINet system proxy: Invoke-WebRequest may send
+# localhost requests to a corporate proxy, which cannot reach the published container port.
+function Test-HttpOk([string]$Url, [int]$TimeoutMs = 2000) {
+    $resp = $null
+    try {
+        $req = [Net.HttpWebRequest]::Create($Url)
+        $req.Proxy = $null
+        $req.Timeout = $TimeoutMs
+        $resp = $req.GetResponse()
+        return ([int]$resp.StatusCode -eq 200)
+    }
+    catch { $script:LastHealthError = $_.Exception.InnerException.Message; if (-not $script:LastHealthError) { $script:LastHealthError = $_.Exception.Message }; return $false }
+    finally { if ($resp) { $resp.Close() } }
+}
 
 $GitHubMode = ($Agent -eq "copilot" -and $CopilotAuth -eq "github")
 if ($Tor -and $GitHubMode) { throw "-Tor cannot be combined with -Agent copilot -CopilotAuth github. Use Copilot BYOK, or start without -Tor." }
@@ -331,12 +345,17 @@ try {
 
     if ($Monitor) {
         $url = "http://localhost:$MonitorPort/"
+        # Probe the bind address directly: "localhost" may resolve to ::1 first, the port is published on IPv4.
+        $probe = "http://${MonitorBind}:$MonitorPort/healthz"
         $ok = $false
         for ($i = 0; $i -lt 20 -and -not $ok; $i++) {
-            try { $ok = (Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 "${url}healthz").StatusCode -eq 200 } catch { Start-Sleep -Milliseconds 500 }
+            $ok = Test-HttpOk $probe
+            if (-not $ok) { Start-Sleep -Milliseconds 500 }
         }
-        if ($ok) { Write-Host "Egress monitor: $url"; if (-not $NoBrowser) { Start-Process $url } }
-        else { Write-Warning "Monitor not reachable on $url; check 'wslc container logs $ViewerName'. Session continues." }
+        if ($ok) { Write-Host "Egress monitor: $url" }
+        else { Write-Warning "Monitor health check on $probe failed ($script:LastHealthError); check 'wslc container logs $ViewerName'. Opening it anyway, session continues." }
+        # The container is running either way; a page that loads a moment later beats no page.
+        if (-not $NoBrowser) { Start-Process $url }
     }
 
     # Agent: internal network only, no extra capabilities.

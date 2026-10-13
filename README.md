@@ -67,7 +67,7 @@ legacy endpoints that cannot serve HTTPS.
 Each image has its own folder, which is also its build context: a build only sees the files in that folder.
 
 ```
-opencode-wslc/
+wslc-agent-sandbox/
 ├── agent/                   agent image (opencode or Copilot CLI)
 │   ├── Dockerfile
 │   ├── entrypoint.sh
@@ -98,9 +98,13 @@ opencode-wslc/
 ├── mcp/                      ready-to-copy MCP configuration
 │   ├── opencode.json
 │   └── copilot.json
+├── tests/                    unit tests (python3 -m unittest discover -s tests)
+│   └── test_api_proxy.py
 ├── SECURITY.md              threat model and vulnerability reporting
 ├── TOR.md                   privacy, attribution and responsible-use guidance
+├── Build-AgentImages.ps1    image builder (Windows host)
 ├── Start-AgentSidecar.ps1   launcher (Windows host)
+├── LICENSE
 └── README.md
 ```
 
@@ -117,6 +121,8 @@ opencode-wslc/
 | `tor-gateway/` | Optional fail-closed HTTP-parent-to-Tor gateway for Squid traffic |
 | `mcp/*.json` | Microsoft Learn and Microsoft Security Release Radar MCP configuration in each agent's native format |
 | `Start-AgentSidecar.ps1` | Launcher: networks, API proxy, squid, optional monitor, agent, teardown |
+| `Build-AgentImages.ps1` | Builds all or selected images with `wslc build`; `-Agent opencode\|copilot\|all`, `-Images`, `-Exclude`, `-AgentVersion`, `-NoCache` |
+| `tests/test_api_proxy.py` | Unit tests for the API proxy model allowlist (Python stdlib `unittest`) |
 | `docs/sidecar-architecture.svg` | Architecture diagram |
 | `docs/sidecar-architecture-overview.svg`, `.png`, `.json` | Presentation-style common architecture view and its editable render specification |
 | `SECURITY.md` | Supported security scope, known limitations and private reporting instructions |
@@ -134,6 +140,11 @@ opencode-wslc/
 
 ```powershell
 # 1. Build the images (from the project root; each folder is its own build context)
+.\Build-AgentImages.ps1                       # all images: both agents, api-proxy, proxy, monitor, tor-gateway
+.\Build-AgentImages.ps1 -Agent opencode       # only the opencode agent image (+ all sidecars)
+.\Build-AgentImages.ps1 -Agent copilot -Exclude tor-gateway   # Copilot agent, no Tor gateway
+
+#    or manually with wslc:
 wslc build -t opencode-alpine:local --build-arg AGENT=opencode agent
 wslc build -t copilot-alpine:local  --build-arg AGENT=copilot  agent
 wslc build -t agent-api-proxy:local api-proxy
@@ -162,10 +173,10 @@ changed, then start a new session; running containers never acquire rebuilt file
 
 | Changed path | Rebuild command |
 |---|---|
-| `agent/` | `wslc build -t opencode-alpine:local --build-arg AGENT=opencode agent` and/or the equivalent `copilot-alpine:local` build |
-| `api-proxy/` | `wslc build -t agent-api-proxy:local api-proxy` |
-| `proxy/` | `wslc build -t agent-egress-proxy:local proxy` |
-| `monitor/` | `wslc build -t agent-egress-monitor:local monitor` |
-| `tor-gateway/` | `wslc build -t agent-tor-gateway:local tor-gateway` |
-| `Start-AgentSidecar.ps1`, `mcp/`, Markdown docs, architecture diagrams | No image rebuild |
+| `agent/` | `.\Build-AgentImages.ps1 -Images opencode,copilot` (or only one of them) |
+| `api-proxy/` | `.\Build-AgentImages.ps1 -Images api-proxy` |
+| `proxy/` | `.\Build-AgentImages.ps1 -Images proxy` |
+| `monitor/` | `.\Build-AgentImages.ps1 -Images monitor` |
+| `tor-gateway/` | `.\Build-AgentImages.ps1 -Images tor-gateway` |
+| `Start-AgentSidecar.ps1`, `Build-AgentImages.ps1`, `mcp/`, `tests/`, Markdown docs, architecture diagrams | No image rebuild |
 
