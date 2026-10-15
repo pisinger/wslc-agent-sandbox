@@ -6,6 +6,14 @@ The default design isolates the agent, allowlists general egress, and keeps the 
 a separate API proxy. It is a strong single-user containment pattern, not a hostile multi-tenant or
 hardware-backed security boundary.
 
+This project invokes WSLc directly and does not implement or embed Microsoft eXecution Container
+(MXC). References to MXC describe the motivation for an external sandbox, not compatibility with
+its policy model, SDK contract, backend selection or security guarantees.
+
+Likewise, the Azure Container Apps Sandboxes reference is design inspiration, not a claim of
+equivalent isolation. This local project does not provide the managed service's multi-tenant
+boundary, lifecycle and snapshot features, persistent volumes, scaling, or Azure network policies.
+
 ## Contents
 
 - [Report a vulnerability](#reporting-a-vulnerability)

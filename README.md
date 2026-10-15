@@ -1,11 +1,64 @@
-# Isolated agent sessions on WSL containers (wslc)
+# External agent and container sandbox on WSLc
 
-Isolated sessions for **opencode** or **GitHub Copilot CLI** on WSL containers, using Ollama Cloud models (default) or GitHub Copilot models. No extra container capabilities are needed:
+A PowerShell-driven sandbox for running CLI agents or arbitrary Linux containers with an isolation
+boundary built outside the workload. The workload does not need to embed a sandbox SDK or know how
+the sidecars are assembled.
 
-- **Network isolation:** the agent runs on an internal network with no route out.
-- **Egress allowlist:** a squid proxy is the only exit for general traffic, and forwards only allowlisted domains.
-- **API key injection (default for Ollama):** a separate API proxy holds the real Ollama key and adds it to model requests. The agent only ever sees a placeholder.
-- **Optional Tor mode:** general Squid traffic can be forced through an isolated Privoxy/Tor gateway while model API traffic stays direct through the API proxy.
+The included launchers support **opencode**, **GitHub Copilot CLI**, any locally available image,
+and repository folders containing a `Dockerfile`:
+
+- **No direct egress:** the workload runs on an internal WSLc network with no default route.
+- **Allowlisted web access:** Squid is the only exit for general tool and web traffic and permits
+  only selected domains; bundled Ollama traffic uses the dedicated API proxy.
+- **External key handling:** for the bundled Ollama agent scenarios, a separate API proxy holds and
+  injects the real model key; the agent sees only a placeholder.
+- **Observable sessions:** an optional local monitor shows connections and, on the Ollama API-proxy
+  path, model and token usage.
+- **Optional Tor path:** tool and web traffic can be forced through an isolated Privoxy/Tor gateway.
+- **Disposable lifecycle:** one PowerShell command creates the topology and removes it on exit.
+- **Root or non-root agents:** the hardened agent default is non-root, with explicit root opt-in for
+  exploratory package installation.
+
+## Project context: why this exists
+
+[Microsoft eXecution Container (MXC)](https://github.com/microsoft/mxc) provides a policy-driven SDK
+for applications that need to run untrusted code across several containment backends. One supported
+backend is [WSL containers (WSLc)](https://learn.microsoft.com/windows/wsl/wsl-container), the same
+Windows container technology used directly by this repository.
+
+MXC is primarily integrated by the host application through its SDK. It also provides standalone
+executor binaries for testing or when the SDK cannot be embedded. In either case, MXC validates a
+policy, selects a containment backend and launches the workload through its execution model.
+
+This repository does not use the MXC SDK, schema or executors. It explores a narrower, complementary
+pattern by wrapping an existing CLI or container from the outside using PowerShell, WSLc networks
+and dedicated proxy sidecars. The security boundary is controlled by the operator rather than by
+code inside the agent. Inspired by
+[Azure Container Apps Sandboxes](https://learn.microsoft.com/azure/container-apps/sandboxes-overview),
+it explores a local WSLc-based pattern for wrapping workloads with externally controlled network
+boundaries and sidecars.
+
+### When to use it
+
+Use this project when you want to:
+
+- experiment locally with an agent that has no MXC integration;
+- place an existing CLI agent behind a destination allowlist without modifying the agent;
+- keep an Ollama model credential outside the bundled agent container;
+- observe an agent's network destinations before narrowing its allowlist;
+- run a custom container with the same proxy-only egress and optional monitor; or
+- study and adapt the sidecar topology for your own sandbox design.
+
+Do not treat it as a drop-in implementation of MXC or as a hostile multi-tenant boundary. It has no
+MXC policy engine, does not provide per-process filesystem policy, and does not reproduce every MXC
+backend or guarantee. The Windows user, host, WSL/WSLc runtime, images and sidecars remain trusted.
+Applications in arbitrary images must send web traffic through the supplied HTTP(S) proxy, usually
+by honoring its conventional environment variables. See the [security policy](SECURITY.md) for the
+complete trust boundary and limitations.
+
+It is also not a local equivalent of Azure Container Apps Sandboxes. The managed service adds
+strong multi-tenant isolation, programmable lifecycle control, suspend and resume, snapshots,
+persistent volumes, scaling, and broader network policies that this project does not reproduce.
 
 ![Preview: starting a sandboxed agent session with the live egress monitor](docs/how-to-get-started.png)
 
@@ -39,6 +92,7 @@ Isolated sessions for **opencode** or **GitHub Copilot CLI** on WSL containers, 
 
 ## Contents
 
+- **Context:** [Why this exists](#project-context-why-this-exists) · [When to use it](#when-to-use-it) · [Security policy](SECURITY.md)
 - **Start:** [Scenarios](#scenarios) · [Prerequisites](#prerequisites) · [Quick start](#quick-start) · [Operations recipes](docs/OPERATIONS.md#recipes)
 - **Configure:** [Agent modes](docs/CONFIGURATION.md#agents) · [API key handling](docs/CONFIGURATION.md#api-key-injection) · [Launcher parameters](docs/CONFIGURATION.md#launcher-parameters) · [Workspaces](docs/CONFIGURATION.md#workspace-options)
 - **Operate:** [Build and launch recipes](docs/OPERATIONS.md#recipes) · [Monitor](docs/OPERATIONS.md#egress-monitor) · [Logs](docs/OPERATIONS.md#logs) · [Verify isolation](docs/OPERATIONS.md#verify-inside-a-session) · [Troubleshooting](docs/OPERATIONS.md#troubleshooting)
@@ -88,7 +142,7 @@ wslc-agent-sandbox/
 │   ├── Dockerfile
 │   ├── viewer.py
 │   └── index.html
-├── generic-alpine/          minimal example custom workload
+├── generic-alpine/          minimal Alpine + Bash example workload
 │   └── Dockerfile
 ├── tor-gateway/             optional unprivileged Privoxy + Tor gateway
 │   ├── Dockerfile
@@ -129,7 +183,7 @@ wslc-agent-sandbox/
 | `api-proxy/Dockerfile`, `api-proxy/api_proxy.py` | API key injection proxy (Python stdlib, non-root) |
 | `proxy/Dockerfile`, `proxy/squid.conf`, `proxy/proxy-entrypoint.sh` | Squid allowlist proxy (non-root) |
 | `monitor/Dockerfile`, `monitor/viewer.py`, `monitor/index.html` | Optional live egress monitor (web UI) |
-| `generic-alpine/` | Minimal example workload, dynamically built as `generic-alpine:local` |
+| `generic-alpine/` | Minimal Alpine + Bash workload, dynamically built as `generic-alpine:local` |
 | `tor-gateway/` | Optional fail-closed HTTP-parent-to-Tor gateway for Squid traffic |
 | `mcp/*.json` | Microsoft Learn and Microsoft Security Release Radar MCP configuration in each agent's native format |
 | `Start-AgentSidecar.ps1` | Launcher: networks, API proxy, squid, optional monitor, agent, teardown |
@@ -191,6 +245,7 @@ To run a non-agent image with the same egress restriction and monitor:
 ```powershell
 .\Build-AgentImages.ps1 -Images proxy,monitor,generic-alpine
 .\Start-RestrictedContainer.ps1 -Image generic-alpine:local -Shell -Monitor
+.\Start-RestrictedContainer.ps1 -Image generic-alpine:local -Shell -ShellPath /bin/bash -Monitor
 .\Start-RestrictedContainer.ps1 -Image generic-alpine:local -Shell -RunAsRoot -Monitor  # enables apk downloads
 .\Start-RestrictedContainer.ps1 -Image generic-alpine:local -Shell -RunAsRoot -AllowHttp -Monitor  # only for HTTP repositories/endpoints
 ```

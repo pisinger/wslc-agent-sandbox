@@ -2,8 +2,15 @@
 
 [← Main README](../README.md) · [Operations guide](OPERATIONS.md) · [Security policy](../SECURITY.md)
 
-`Start-RestrictedContainer.ps1` runs an arbitrary image with the repository's Squid allowlist,
-optional live monitor, and optional Tor gateway. It does not start an AI agent or API-key proxy.
+`Start-RestrictedContainer.ps1` is the external-sandbox path for an arbitrary image. The image does
+not need to embed MXC or another sandbox SDK. The launcher wraps it with an internal WSLc network,
+no direct route, the repository's Squid allowlist, an optional live monitor, and an optional Tor
+gateway. It does not start an AI agent or API-key proxy.
+
+This is useful for existing command-line tools, SDK-less agents and disposable test workloads whose
+HTTP(S) destinations should be constrained by the operator. It is not an MXC implementation and
+does not add fine-grained filesystem policy or harden the image itself; read the
+[security policy](../SECURITY.md) before using untrusted images or writable host mounts.
 
 ## Build the sidecars
 
@@ -15,8 +22,8 @@ Build the proxy and the generic Alpine example. Add the monitor and Tor gateway 
 .\Build-AgentImages.ps1 -Images proxy,monitor,tor-gateway,generic-alpine
 ```
 
-The historical builder name is retained for compatibility. `generic-alpine` is an ordinary example
-workload discovered from its folder; it is not a hard-coded launcher dependency.
+The historical builder name is retained for compatibility. `generic-alpine` is an ordinary Alpine
+example with Bash installed, discovered from its folder; it is not a hard-coded launcher dependency.
 
 Any new root-level folder containing a `Dockerfile` is discovered automatically by the builder's
 default `-Images all` mode. It can also be built directly, without editing the script:
@@ -54,7 +61,12 @@ Allow a selected HTTPS destination and show the live monitor:
 ```
 
 `-Shell` starts the image in the background and enters `/bin/sh` with `wslc exec -it`. Exiting the
-shell tears down the workload and sidecars. Use `-ShellPath` for another shell.
+shell tears down the workload and sidecars. The `generic-alpine` image also includes Bash; select it
+with `-ShellPath /bin/bash`:
+
+```powershell
+.\Start-RestrictedContainer.ps1 -Image generic-alpine:local -Shell -ShellPath /bin/bash -Monitor
+```
 
 Inside the Alpine shell, the allowlisted request succeeds, an unlisted destination is denied, and
 clearing the proxy variables does not create a direct route:
