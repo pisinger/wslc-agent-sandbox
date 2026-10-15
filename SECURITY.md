@@ -38,6 +38,10 @@ headers, restricts paths and models, and can enforce a request cap.
 The launch-time self-test is part of the boundary: if direct routing, proxy denial, API-proxy
 reachability or placeholder-key checks fail, the agent must not start.
 
+`Start-RestrictedContainer.ps1` applies the network portion of this design to an arbitrary image.
+The custom image itself remains trusted: the launcher does not impose the agent image's user,
+capability, entrypoint, filesystem hardening, or launch-time isolation self-test.
+
 With `-Tor`, all Squid-managed traffic is forced through an unprivileged Privoxy/Tor gateway on a
 dedicated internal transit network. Squid has no direct-egress interface. The API proxy remains on
 its separate direct path, so model traffic and the real Ollama key do not traverse Tor. Startup

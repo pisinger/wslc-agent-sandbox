@@ -31,6 +31,7 @@ Isolated sessions for **opencode** or **GitHub Copilot CLI** on WSL containers, 
 | **README** (this page) | Overview, architecture, scenarios and quick start |
 | [Configuration reference](docs/CONFIGURATION.md) | Agent modes, credentials, launcher parameters and workspace mounts |
 | [Operations guide](docs/OPERATIONS.md) | Builds, recipes, monitoring, verification, logs and troubleshooting |
+| [Restricted custom containers](docs/GENERIC-CONTAINERS.md) | Run any image with allowlisted egress and the same sidecars |
 | [Security policy](SECURITY.md) | Trust boundary, limitations, safe baseline and vulnerability reporting |
 | [Tor mode guide](TOR.md) | Privacy, attribution, governance and responsible-use decisions |
 | [Architecture overview](docs/sidecar-architecture-overview.svg) | Presentation-friendly view of the two egress paths |
@@ -87,6 +88,8 @@ wslc-agent-sandbox/
 │   ├── Dockerfile
 │   ├── viewer.py
 │   └── index.html
+├── generic-alpine/          minimal example custom workload
+│   └── Dockerfile
 ├── tor-gateway/             optional unprivileged Privoxy + Tor gateway
 │   ├── Dockerfile
 │   ├── entrypoint.sh
@@ -100,6 +103,7 @@ wslc-agent-sandbox/
 │   ├── sidecar-architecture-overview.png
 │   ├── sidecar-architecture-overview.json
 │   ├── CONFIGURATION.md
+│   ├── GENERIC-CONTAINERS.md
 │   └── OPERATIONS.md
 ├── mcp/                      ready-to-copy MCP configuration
 │   ├── opencode.json
@@ -110,6 +114,7 @@ wslc-agent-sandbox/
 ├── TOR.md                   privacy, attribution and responsible-use guidance
 ├── Build-AgentImages.ps1    image builder (Windows host)
 ├── Start-AgentSidecar.ps1   launcher (Windows host)
+├── Start-RestrictedContainer.ps1  generic custom-image launcher
 ├── LICENSE
 └── README.md
 ```
@@ -124,9 +129,11 @@ wslc-agent-sandbox/
 | `api-proxy/Dockerfile`, `api-proxy/api_proxy.py` | API key injection proxy (Python stdlib, non-root) |
 | `proxy/Dockerfile`, `proxy/squid.conf`, `proxy/proxy-entrypoint.sh` | Squid allowlist proxy (non-root) |
 | `monitor/Dockerfile`, `monitor/viewer.py`, `monitor/index.html` | Optional live egress monitor (web UI) |
+| `generic-alpine/` | Minimal example workload, dynamically built as `generic-alpine:local` |
 | `tor-gateway/` | Optional fail-closed HTTP-parent-to-Tor gateway for Squid traffic |
 | `mcp/*.json` | Microsoft Learn and Microsoft Security Release Radar MCP configuration in each agent's native format |
 | `Start-AgentSidecar.ps1` | Launcher: networks, API proxy, squid, optional monitor, agent, teardown |
+| `Start-RestrictedContainer.ps1` | Runs an arbitrary image with proxy-only egress, optional monitor and Tor |
 | `Build-AgentImages.ps1` | Builds all or selected images with `wslc build`; `-Agent opencode\|copilot\|all`, `-Images`, `-Exclude`, `-AgentVersion`, `-NoCache` |
 | `tests/test_api_proxy.py` | Unit tests for the API proxy model allowlist (Python stdlib `unittest`) |
 | `docs/sidecar-architecture.svg` | Architecture diagram |
@@ -134,6 +141,7 @@ wslc-agent-sandbox/
 | `SECURITY.md` | Supported security scope, known limitations and private reporting instructions |
 | `docs/CONFIGURATION.md` | Agent modes, launcher parameters, environment, and workspace configuration |
 | `docs/OPERATIONS.md` | Build/run recipes, monitoring, verification, logs, and troubleshooting |
+| `docs/GENERIC-CONTAINERS.md` | Generic workload parameters, recipes, lifecycle, and security boundary |
 | `TOR.md` | Tor privacy, attribution, governance and responsible-use guidance |
 
 ## Prerequisites
@@ -147,7 +155,7 @@ wslc-agent-sandbox/
 
 ```powershell
 # 1. Build the images (from the project root; each folder is its own build context)
-.\Build-AgentImages.ps1                       # all images: both agents, api-proxy, proxy, monitor, tor-gateway
+.\Build-AgentImages.ps1                       # all known images + discovered Dockerfile folders
 .\Build-AgentImages.ps1 -Agent opencode       # only the opencode agent image (+ all sidecars)
 .\Build-AgentImages.ps1 -Agent copilot -Exclude tor-gateway   # Copilot agent, no Tor gateway
 
@@ -158,6 +166,7 @@ wslc build -t agent-api-proxy:local api-proxy
 wslc build -t agent-egress-proxy:local proxy
 wslc build -t agent-egress-monitor:local monitor   # only for -Monitor
 wslc build -t agent-tor-gateway:local tor-gateway  # only for -Tor
+wslc build -t generic-alpine:local generic-alpine  # example custom workload
 
 # 2. Store secrets once (optional, recommended)
 #    One-time vault setup (SecretManagement + SecretStore vault):
@@ -177,6 +186,34 @@ Set-Secret -Name CopilotGithubToken -Secret (Read-Host "GitHub PAT" -AsSecureStr
 .\Start-AgentSidecar.ps1 -Tor -Monitor              # tool traffic via Tor; model API stays direct
 ```
 
+To run a non-agent image with the same egress restriction and monitor:
+
+```powershell
+.\Build-AgentImages.ps1 -Images proxy,monitor,generic-alpine
+.\Start-RestrictedContainer.ps1 -Image generic-alpine:local -Shell -Monitor
+.\Start-RestrictedContainer.ps1 -Image generic-alpine:local -Shell -RunAsRoot -Monitor  # enables apk downloads
+.\Start-RestrictedContainer.ps1 -Image generic-alpine:local -Shell -RunAsRoot -AllowHttp -Monitor  # only for HTTP repositories/endpoints
+```
+
+The standard Alpine repositories use HTTPS, so ordinary `apk add --no-cache <package>` only needs
+`-RunAsRoot`; it does not need `-AllowHttp`. Add `-AllowHttp` only when the workload deliberately
+uses an allowlisted plain-HTTP repository or endpoint.
+
+See [Restricted custom containers](docs/GENERIC-CONTAINERS.md) for mounts, environment variables,
+localhost port publishing, deny-all operation, destination discovery, and Tor mode.
+
+The build script also handles new images dynamically. Add a root-level folder containing a
+`Dockerfile`; the default `-Images all` discovers it automatically, or select it by folder name:
+
+```powershell
+# ./my-container/Dockerfile
+.\Build-AgentImages.ps1 -Images my-container   # creates my-container:local
+.\Start-RestrictedContainer.ps1 -Image my-container:local -Shell -Monitor
+```
+
+No build-script catalog change is needed for ordinary custom image folders. The catalog is retained
+only for existing images that need special tags or build arguments.
+
 ### What needs rebuilding
 
 The launcher does not build images automatically. Rebuild only the image whose source folder
@@ -189,5 +226,6 @@ changed, then start a new session; running containers never acquire rebuilt file
 | `proxy/` | `.\Build-AgentImages.ps1 -Images proxy` |
 | `monitor/` | `.\Build-AgentImages.ps1 -Images monitor` |
 | `tor-gateway/` | `.\Build-AgentImages.ps1 -Images tor-gateway` |
-| `Start-AgentSidecar.ps1`, `Build-AgentImages.ps1`, `mcp/`, `tests/`, Markdown docs, architecture diagrams | No image rebuild |
+| `generic-alpine/` | `.\Build-AgentImages.ps1 -Images generic-alpine` |
+| `Start-AgentSidecar.ps1`, `Start-RestrictedContainer.ps1`, `Build-AgentImages.ps1`, `mcp/`, `tests/`, Markdown docs, architecture diagrams | No image rebuild |
 

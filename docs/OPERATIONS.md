@@ -29,6 +29,8 @@ failed build and prints a summary table.
 .\Build-AgentImages.ps1 -Agent opencode                     # opencode agent image + all sidecars
 .\Build-AgentImages.ps1 -Agent copilot                      # Copilot agent image + all sidecars ("github" also works)
 .\Build-AgentImages.ps1 -Images api-proxy,proxy             # selected images only
+.\Build-AgentImages.ps1 -Images proxy,monitor,generic-alpine # generic container sidecars
+.\Build-AgentImages.ps1 -Images my-container                # ./my-container/Dockerfile
 .\Build-AgentImages.ps1 -Exclude tor-gateway,monitor        # skip optional images
 .\Build-AgentImages.ps1 -Agent copilot -AgentVersion 1.0.4 -NoCache   # pinned CLI, clean rebuild
 ```
@@ -36,7 +38,7 @@ failed build and prints a summary table.
 | Parameter | Effect |
 |---|---|
 | `-Agent all\|opencode\|copilot\|github` | Which agent image to build (default `all`; `github` = `copilot`). Sidecar images are unaffected |
-| `-Images` | `all` (default) or a list of `opencode`, `copilot`, `api-proxy`, `proxy`, `monitor`, `tor-gateway` |
+| `-Images` | `all` (default), a known image name, or any repository-relative folder containing a `Dockerfile` |
 | `-Exclude` | Images to skip from the selection |
 | `-AgentVersion` | `--build-arg AGENT_VERSION=<version>` for the agent images, pins the CLI |
 | `-AlpineVersion` | `--build-arg ALPINE_VERSION=<version>` for all images (default in the Dockerfiles: 3.22) |
@@ -51,9 +53,44 @@ wslc build -t agent-egress-proxy:local   proxy
 wslc build -t agent-api-proxy:local      api-proxy
 wslc build -t agent-egress-monitor:local monitor
 wslc build -t agent-tor-gateway:local    tor-gateway   # optional
+wslc build -t generic-alpine:local generic-alpine
 ```
 
 `wslc image ls` shows the creation time of each tag.
+
+For arbitrary, non-agent workloads, see [Restricted custom containers](GENERIC-CONTAINERS.md).
+
+For an interactive Alpine workload that can install packages at runtime:
+
+```powershell
+.\Start-RestrictedContainer.ps1 -Image generic-alpine:local -Shell -RunAsRoot -Monitor
+# Inside the shell: apk add --no-cache curl jq
+```
+
+`-RunAsRoot` adds Alpine's HTTPS CDN to the destination allowlist. Standard Alpine repositories
+therefore do not need `-AllowHttp`; add that switch only for an intentionally configured HTTP-only
+mirror or endpoint.
+
+### Add another image dynamically
+
+Add a root-level folder with a `Dockerfile`; no change to the build script is required:
+
+```text
+my-container/
+└── Dockerfile
+```
+
+Build it explicitly, or let the default `all` selection discover it:
+
+```powershell
+.\Build-AgentImages.ps1 -Images my-container  # tag: my-container:local
+.\Build-AgentImages.ps1                       # includes every root-level Dockerfile folder
+```
+
+Repository-relative nested folders can be selected explicitly with forward slashes. Their path
+separators become dashes in the tag: `-Images experiments/my-container` produces
+`experiments-my-container:local`. Known catalog entries keep their established tags and special
+build arguments.
 
 ### Choose agent and model
 
