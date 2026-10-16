@@ -11,4 +11,7 @@ COPY api_proxy.py /opt/api-proxy/api_proxy.py
 USER apiproxy
 EXPOSE 8080
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD wget -q -Y off -O /dev/null "http://127.0.0.1:${API_PROXY_PORT:-8080}/healthz" || exit 1
+
 ENTRYPOINT ["/sbin/tini", "--", "python3", "-u", "/opt/api-proxy/api_proxy.py"]

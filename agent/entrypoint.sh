@@ -1,7 +1,7 @@
 #!/bin/sh
 # Agent entrypoint for opencode or GitHub Copilot CLI (selected by AGENT, baked into the image).
 #
-#   Root phase:  session packages, egress self-test, privilege drop.
+#   Startup phase: egress self-test; optional root-only package install and privilege drop.
 #   Agent phase: agent-specific config from env, then exec the CLI.
 #
 # Env contract:
@@ -25,28 +25,33 @@
 #   COPILOT_UV_THREADPOOL copilot only: libuv thread pool size (default 16)
 set -eu
 
-# ---- Root phase ------------------------------------------------------------------------
-# Verifies egress isolation, then drops ALL capabilities and re-execs this script as "agent"
-# (or as root with a minimal capability set when AGENT_RUN_AS_ROOT=1).
-# ENTRYPOINT_AGENT_PHASE marks the re-exec, so a root agent doesn't run this phase twice.
-if [ "$(id -u)" = "0" ] && [ -z "${ENTRYPOINT_AGENT_PHASE:-}" ]; then
-  # Session packages: installed as root before the privilege drop, so the agent never gets apk rights.
-  if [ -n "${EXTRA_APK_PACKAGES:-}" ]; then
-    for pkg in $EXTRA_APK_PACKAGES; do
-      echo "$pkg" | grep -Eq '^[a-z0-9][a-z0-9._+-]*$' \
-        || { echo "apk: rejected package name '$pkg'" >&2; exit 1; }
-    done
-    # shellcheck disable=SC2086
-    apk add --no-cache $EXTRA_APK_PACKAGES
-  fi
-  # Agent CLIs need a real bash for their shell tools; fail loudly instead of a broken session.
-  [ -x /bin/bash ] || { echo "entrypoint: /bin/bash missing; rebuild the image from agent/Dockerfile" >&2; exit 1; }
+# Agent CLIs need a real bash for their shell tools; fail loudly instead of a broken session.
+[ -x /bin/bash ] || { echo "entrypoint: /bin/bash missing; rebuild the image from agent/Dockerfile" >&2; exit 1; }
 
+# Package installation is reachable only when the launcher explicitly overrides USER agent.
+if [ "$(id -u)" = "0" ] && [ -z "${ENTRYPOINT_AGENT_PHASE:-}" ] && [ -n "${EXTRA_APK_PACKAGES:-}" ]; then
+  for pkg in $EXTRA_APK_PACKAGES; do
+    echo "$pkg" | grep -Eq '^[a-z0-9][a-z0-9._+-]*$' \
+      || { echo "apk: rejected package name '$pkg'" >&2; exit 1; }
+  done
+  # shellcheck disable=SC2086
+  apk add --no-cache $EXTRA_APK_PACKAGES
+fi
+
+# Both the normal non-root path and the explicit root-start path must pass the same egress gate.
+if [ -z "${ENTRYPOINT_AGENT_PHASE:-}" ]; then
   case "${EGRESS_MODE:-proxy}" in
     proxy) /usr/local/bin/check-proxy-egress.sh ;;
     none)  echo "WARNING: EGRESS_MODE=none, egress isolation NOT verified" >&2 ;;
     *)     echo "entrypoint: unknown EGRESS_MODE '${EGRESS_MODE}'" >&2; exit 1 ;;
   esac
+fi
+
+# ---- Root phase ------------------------------------------------------------------------
+# Verifies egress isolation, then drops ALL capabilities and re-execs this script as "agent"
+# (or as root with a minimal capability set when AGENT_RUN_AS_ROOT=1).
+# ENTRYPOINT_AGENT_PHASE marks the re-exec, so a root agent doesn't run this phase twice.
+if [ "$(id -u)" = "0" ] && [ -z "${ENTRYPOINT_AGENT_PHASE:-}" ]; then
   export ENTRYPOINT_AGENT_PHASE=1
 
   if [ "${AGENT_RUN_AS_ROOT:-0}" = "1" ]; then

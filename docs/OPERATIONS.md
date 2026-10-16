@@ -110,7 +110,7 @@ Extra Alpine packages for one session, installed as root **before** the privileg
 ```
 launcher -ApkPackages "python3 py3-pip"
   1. adds dl-cdn.alpinelinux.org to the squid allowlist
-  2. passes EXTRA_APK_PACKAGES to the agent container
+  2. explicitly starts the container as UID 0 and passes EXTRA_APK_PACKAGES
 entrypoint, root phase
   3. validates each name (^[a-z0-9][a-z0-9._+-]*$, blocks option injection)
   4. apk add --no-cache ...  via squid (CONNECT dl-cdn.alpinelinux.org:443)
@@ -130,7 +130,15 @@ entrypoint, root phase
 
 ### Agent as root (`-RunAsRoot`)
 
-By default the agent runs as the unprivileged `agent` user and can't install anything. With `-RunAsRoot` it runs as root, so it can `apk add` whatever a task needs, at runtime and on its own.
+The image declares `USER agent` (UID 1000), so non-root is the container-image default rather than
+only an entrypoint convention. Normal sessions therefore start and remain unprivileged. With
+`-ApkPackages`, the launcher temporarily overrides the image user to UID 0; the entrypoint installs
+the packages, verifies egress, and re-execs itself as `agent` with an empty capability bounding set
+and `no_new_privs`.
+
+With `-RunAsRoot`, the launcher also explicitly overrides the image user to UID 0, but the agent
+phase intentionally remains root so it can run `apk add` itself. This is an opt-in reduction in
+isolation and is announced with a warning.
 
 ```powershell
 .\Start-AgentSidecar.ps1 -RunAsRoot

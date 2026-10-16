@@ -178,12 +178,12 @@ wslc-agent-sandbox/
 | File | Purpose |
 |---|---|
 | `agent/Dockerfile` | Agent image; `--build-arg AGENT=opencode` or `AGENT=copilot` |
-| `agent/entrypoint.sh` | Root phase: packages, egress self-test, privilege drop. Agent phase: per-agent config, exec CLI |
+| `agent/entrypoint.sh` | Startup: egress self-test; optional root-only packages and privilege drop. Agent phase: per-agent config, exec CLI |
 | `agent/check-proxy-egress.sh` | Agent-side self-test, fails closed |
 | `api-proxy/Dockerfile`, `api-proxy/api_proxy.py` | API key injection proxy (Python stdlib, non-root) |
 | `proxy/Dockerfile`, `proxy/squid.conf`, `proxy/proxy-entrypoint.sh` | Squid allowlist proxy (non-root) |
 | `monitor/Dockerfile`, `monitor/viewer.py`, `monitor/index.html` | Optional live egress monitor (web UI) |
-| `generic-alpine/` | Minimal Alpine + Bash workload, dynamically built as `generic-alpine:local` |
+| `generic-alpine/` | Minimal Alpine + Bash workload with non-root `sandbox` default, built as `generic-alpine:local` |
 | `tor-gateway/` | Optional fail-closed HTTP-parent-to-Tor gateway for Squid traffic |
 | `mcp/*.json` | Microsoft Learn and Microsoft Security Release Radar MCP configuration in each agent's native format |
 | `Start-AgentSidecar.ps1` | Launcher: networks, API proxy, squid, optional monitor, agent, teardown |
@@ -253,6 +253,11 @@ To run a non-agent image with the same egress restriction and monitor:
 The standard Alpine repositories use HTTPS, so ordinary `apk add --no-cache <package>` only needs
 `-RunAsRoot`; it does not need `-AllowHttp`. Add `-AllowHttp` only when the workload deliberately
 uses an allowlisted plain-HTTP repository or endpoint.
+
+Both supplied workload images have safe image-level defaults: the agent image declares
+`USER agent`, and `generic-alpine` declares `USER sandbox` (both UID 1000). `-RunAsRoot` is an
+explicit runtime override. For agent sessions, `-ApkPackages` also starts the container as UID 0
+temporarily, installs the requested packages, and then drops back to `agent` before the CLI starts.
 
 See [Restricted custom containers](docs/GENERIC-CONTAINERS.md) for mounts, environment variables,
 localhost port publishing, deny-all operation, destination discovery, and Tor mode.

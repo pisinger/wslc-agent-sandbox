@@ -68,6 +68,14 @@ param(
 )
 # Native wslc errors are checked via $LASTEXITCODE (Stop + 2>&1 misbehaves in Windows PowerShell 5.1).
 function Assert-Wslc([string]$Step) { if ($LASTEXITCODE -ne 0) { throw "wslc failed: $Step (exit $LASTEXITCODE)" } }
+# SecretManagement providers can emit their own error record (for example when SecretStore is
+# locked) even when the caller requests SilentlyContinue. Treat vault access as an optional lookup
+# and suppress provider errors; callers decide whether to warn, prompt, or continue without a key.
+function Get-OptionalPlainTextSecret([string]$Name) {
+    if (-not (Get-Command Get-Secret -ErrorAction SilentlyContinue)) { return $null }
+    try { return (Get-Secret -Name $Name -AsPlainText -ErrorAction Stop 2>$null) }
+    catch { return $null }
+}
 # Workspace: new session folder (default), an existing host folder, or an existing wslc volume.
 function Resolve-Workspace([string]$Workspace, [string]$SessionFolder, [bool]$ReadOnly) {
     $ro = if ($ReadOnly) { ":ro" } else { "" }
@@ -222,8 +230,8 @@ if ($netHelp -notmatch '--internal') {
 # GitHub mode: optional token (env > vault "CopilotGithubToken"); without one the user runs /login.
 $GitHubTokenSet = $false
 if ($GitHubMode) {
-    if (-not $env:COPILOT_GITHUB_TOKEN -and (Get-Command Get-Secret -ErrorAction SilentlyContinue)) {
-        $env:COPILOT_GITHUB_TOKEN = Get-Secret -Name CopilotGithubToken -AsPlainText -ErrorAction SilentlyContinue
+    if (-not $env:COPILOT_GITHUB_TOKEN) {
+        $env:COPILOT_GITHUB_TOKEN = Get-OptionalPlainTextSecret 'CopilotGithubToken'
         $GitHubTokenSet = [bool]$env:COPILOT_GITHUB_TOKEN
     }
     if ($CopilotHomeVolume) {
@@ -234,10 +242,9 @@ if ($GitHubMode) {
 
 # Ollama key (not needed in GitHub mode). Order: existing process env > SecretManagement vault > prompt.
 if (-not $GitHubMode -and -not $env:OLLAMA_API_KEY) {
-    if (Get-Command Get-Secret -ErrorAction SilentlyContinue) {
-        $env:OLLAMA_API_KEY = Get-Secret -Name OllamaApiKey -AsPlainText -ErrorAction SilentlyContinue
-    }
+    $env:OLLAMA_API_KEY = Get-OptionalPlainTextSecret 'OllamaApiKey'
     if (-not $env:OLLAMA_API_KEY) {
+        Write-Warning "OllamaApiKey was not available from SecretManagement; prompting for OLLAMA_API_KEY."
         $sec = Read-Host "OLLAMA_API_KEY" -AsSecureString
         $env:OLLAMA_API_KEY = [Net.NetworkCredential]::new('', $sec).Password
     }
@@ -396,7 +403,11 @@ try {
         Write-Host "MCP config: $McpConfigResolved (read-only, loaded at agent startup)"
     }
 
-    wslc run --rm -it --name $Name --network $NetName @agentArgs --memory 4g --cpus 2 $Image
+    # Images default to USER agent. Root startup is requested only when package installation needs
+    # it or when the caller explicitly chose -RunAsRoot. Entrypoint drops back to agent after
+    # installing -ApkPackages unless -RunAsRoot remains active.
+    $agentUserArgs = if ($ApkPackages -or $RunAsRoot) { @('--user', '0') } else { @() }
+    wslc run --rm -it --name $Name --network $NetName @agentUserArgs @agentArgs --memory 4g --cpus 2 $Image
 }
 finally {
     $ErrorActionPreference = 'Continue'

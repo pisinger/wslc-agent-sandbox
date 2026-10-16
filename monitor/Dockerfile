@@ -11,4 +11,7 @@ COPY viewer.py index.html /opt/monitor/
 USER monitor
 EXPOSE 8080 5140/udp
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD wget -q -Y off -O /dev/null "http://127.0.0.1:${VIEWER_HTTP_PORT:-8080}/healthz" || exit 1
+
 ENTRYPOINT ["/sbin/tini", "--", "python3", "-u", "/opt/monitor/viewer.py"]

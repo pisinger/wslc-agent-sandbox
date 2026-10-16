@@ -156,14 +156,14 @@ Use it to rule out the API proxy when debugging, then switch back. Use a dedicat
 | `OLLAMA_BASE_URL` | `http://oc-api-<session>:8080/v1` with injection | Model endpoint |
 | `OLLAMA_MODELS` | `-Models` | Model list |
 | `OPENCODE_AUTO` | `1` / `0` | Auto mode for either agent |
-| `AGENT_RUN_AS_ROOT` | `1` with `-RunAsRoot` | Agent phase runs as root with a minimal capability set instead of as `agent` |
+| `AGENT_RUN_AS_ROOT` | `1` with `-RunAsRoot` | Launcher overrides the image's `USER agent`; agent phase remains root with a minimal capability set |
 | `COPILOT_WIRE_API` | `-CopilotWireApi` | BYOK: mapped to `COPILOT_PROVIDER_WIRE_API` |
 | `COPILOT_AUTH` | `github` with `-CopilotAuth github` | Selects the Copilot auth branch in the entrypoint; default `byok` |
 | `COPILOT_GITHUB_TOKEN` | host env or vault, by name | GitHub mode only; unset in BYOK mode |
 | `COPILOT_NODE_OPTIONS` | `-CopilotNodeOptions` | Copilot: becomes `NODE_OPTIONS` unless one is set explicitly; `UV_THREADPOOL_SIZE` defaults to 16 |
 | `COPILOT_MODEL` | `-CopilotModel` | GitHub mode only; BYOK sets it from `-Models` |
 | `OPENCODE_CONFIG` | `/run/agent-mcp.json` with `-McpConfig` | OpenCode custom config layer mounted read-only and merged with the generated global provider config |
-| `EXTRA_APK_PACKAGES` | `-ApkPackages` | Installed as root before the privilege drop |
+| `EXTRA_APK_PACKAGES` | `-ApkPackages` | Launcher temporarily starts as UID 0; packages are installed before dropping to `agent` |
 | `EGRESS_MODE` | `proxy` | `proxy` = run the isolation self-test (fail closed); `none` = skip it (explicit opt-out) |
 | `HTTPS_PROXY`, `HTTP_PROXY` (+ lowercase) | `http://oc-proxy-<session>:3128` | Squid |
 | `NO_PROXY` (+ lowercase) | `localhost,127.0.0.1,oc-api-<session>` | API proxy is reached directly |

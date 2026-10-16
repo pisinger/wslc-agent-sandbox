@@ -14,4 +14,9 @@ COPY --chmod=0755 proxy-entrypoint.sh /usr/local/bin/proxy-entrypoint.sh
 USER squid
 EXPOSE 3128
 
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD printf 'GET /squid-internal-mgr/info HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n' \
+        | nc -w 2 127.0.0.1 3128 \
+        | grep -q '^HTTP/1\.[01] [2345][0-9][0-9]'
+
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/proxy-entrypoint.sh"]

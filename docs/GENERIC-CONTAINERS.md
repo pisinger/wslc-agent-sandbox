@@ -114,10 +114,14 @@ is no additional helper or startup script inside the workload image.
 Both upper- and lowercase `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` variables are controlled by
 the launcher and cannot be overridden through `-Environment` or `-PassEnvironment`.
 
-The minimal `generic-alpine` example already defaults to root because its base image declares no
-non-root `USER`, but deny-all egress still prevents `apk` downloads. Use `-RunAsRoot` when you want
-an Alpine shell with package installation: it explicitly runs as UID 0 and adds only the Alpine CDN
-to the HTTPS allowlist. It does not grant additional container capabilities.
+The minimal `generic-alpine` example declares `USER sandbox` (UID 1000) and uses
+`/workspace` as its writable working directory. This non-root identity is part of the image, so it
+also applies when the image is launched without these scripts. Files mounted into `/workspace`
+must be writable by UID 1000 when the session needs write access.
+
+Use `-RunAsRoot` only when the workload genuinely needs UID 0, for example to install Alpine
+packages. The launcher then explicitly overrides the image's `USER`, warns at startup, and adds
+only the Alpine CDN to the HTTPS allowlist. It does not grant additional container capabilities.
 
 ```powershell
 .\Start-RestrictedContainer.ps1 -Image generic-alpine:local -Shell -RunAsRoot -Monitor

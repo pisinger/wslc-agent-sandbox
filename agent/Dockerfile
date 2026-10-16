@@ -54,8 +54,10 @@ ENV HOME=/home/agent \
     AGENT=${AGENT} \
     OLLAMA_BASE_URL=https://ollama.com/v1
 
-# Starts as root on purpose: entrypoint verifies egress isolation, then drops to "agent"
-# with an empty capability bounding set before the agent CLI runs.
+# Secure image default: the CLI and egress self-test run as the named, unprivileged user.
+# The launcher overrides this to UID 0 only for -ApkPackages or the explicit -RunAsRoot mode;
+# entrypoint then drops privileges after package installation unless root mode was requested.
+USER agent
 WORKDIR /workspace
 
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/entrypoint.sh"]
