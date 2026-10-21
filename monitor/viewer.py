@@ -56,7 +56,7 @@ def parse(line):
         ts, dur, up, down = float(ts), int(dur), int(up), int(down)
     except ValueError:
         return None
-    host, port = url, ""
+    host, port, path = url, "", ""
     if method == "CONNECT":
         h, _, p = url.rpartition(":")
         if h:
@@ -66,6 +66,7 @@ def parse(line):
         if m:
             host = m.group(1)
             port = m.group(2) or ("443" if url.lower().startswith("https") else "80")
+            path = url[m.end():] or "/"
     if "DENIED" in code:
         verdict = "denied"
     elif code == "TCP_TUNNEL" or status.startswith(("2", "3")):
@@ -74,7 +75,7 @@ def parse(line):
         verdict = "error"
     return {"ts": ts, "dur": dur, "client": client, "code": code, "status": status,
             "up": up, "down": down, "method": method, "server": server, "url": url,
-            "host": host, "port": port, "verdict": verdict, "model": model,
+            "host": host, "port": port, "path": path, "verdict": verdict, "model": model,
             "tokens_in": tokens_in, "tokens_out": tokens_out}
 
 

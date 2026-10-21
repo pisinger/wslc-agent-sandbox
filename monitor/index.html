@@ -78,6 +78,7 @@ footer { display: flex; gap: 18px; padding: 4px 10px; border-top: 1px solid var(
   main { grid-template-columns: 1fr; grid-template-rows: 1fr 160px auto; }
   #side { grid-column: 1; grid-row: 3; max-height: 220px; }
 }
+  td.path { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, monospace; font-size: 11px; }
 </style>
 </head>
 <body>
@@ -97,7 +98,7 @@ footer { display: flex; gap: 18px; padding: 4px 10px; border-top: 1px solid var(
     <table>
       <thead><tr>
         <th class="num">No.</th><th>Time</th><th class="num">Duration</th><th>Source</th><th>Method</th>
-        <th>Destination</th><th>Resolved IP</th><th>Port</th><th>Model</th><th class="num">Tok in</th><th class="num">Tok out</th>
+        <th>Destination</th><th>Path</th><th>Resolved IP</th><th>Port</th><th>Model</th><th class="num">Tok in</th><th class="num">Tok out</th>
         <th>Result</th><th>Status</th><th class="num">Sent</th><th class="num">Received</th>
       </tr></thead>
       <tbody id="rows"></tbody>
@@ -172,7 +173,7 @@ footer { display: flex; gap: 18px; padding: 4px 10px; border-top: 1px solid var(
     if (!m) {
       if (/\s/.test(text)) throw new Error("bad clause");
       const needle = text.toLowerCase();
-      return (r) => [r.host, r.url, r.client, r.code, r.method, r.status, r.verdict, r.model].join(" ").toLowerCase().includes(needle);
+      return (r) => [r.host, r.url, r.path, r.client, r.code, r.method, r.status, r.verdict, r.model].join(" ").toLowerCase().includes(needle);
     }
     const key = FIELDS[m[1].toLowerCase()];
     if (!key) throw new Error("unknown field " + m[1]);
@@ -208,7 +209,7 @@ footer { display: flex; gap: 18px; padding: 4px 10px; border-top: 1px solid var(
     tr.dataset.no = r.no;
     tr.tabIndex = -1;
     cell(tr, r.no, "num"); cell(tr, fmtTime(r.ts)); cell(tr, fmtDur(r.dur), "num");
-    cell(tr, r.client); cell(tr, r.method); cell(tr, r.host);
+    cell(tr, r.client); cell(tr, r.method); cell(tr, r.host); cell(tr, r.path || "", "path");
     cell(tr, r.server && r.server !== "-" ? r.server : ""); cell(tr, r.port);
     cell(tr, r.model || "", "model");
     cell(tr, fmtTok(r.tokens_in), "num"); cell(tr, fmtTok(r.tokens_out), "num");
@@ -235,6 +236,7 @@ footer { display: flex; gap: 18px; padding: 4px 10px; border-top: 1px solid var(
     add("Source", r.client);
     add("Destination", r.host + (r.port ? ":" + r.port : "") + (r.server && r.server !== "-" ? "  resolved " + r.server : ""));
     add("Method", r.method);
+    if (r.path) add("Path", r.path);
     if (r.model) add("Model", r.model);
     if (r.tokens_in != null || r.tokens_out != null)
       add("Tokens", (r.tokens_in ?? "?") + " in, " + (r.tokens_out ?? "?") + " out");
